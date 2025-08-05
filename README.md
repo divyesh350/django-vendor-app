@@ -118,6 +118,15 @@ The API will be available at `http://localhost:8000/`
 
 ## 📚 API Documentation
 
+### Interactive API Docs
+
+- **Swagger UI**: [http://localhost:8000/swagger/](http://localhost:8000/swagger/)
+- **ReDoc**: [http://localhost:8000/redoc/](http://localhost:8000/redoc/)
+
+You can explore, test, and visualize all API endpoints, request/response schemas, authentication, and file upload directly from these interactive docs.
+
+---
+
 ### Base URL
 ```
 http://localhost:8000/api/vendor/

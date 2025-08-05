@@ -15,12 +15,30 @@ from .serializers import (
 )
 import logging
 
+# drf-yasg imports
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
 logger = logging.getLogger(__name__)
 
 
 class SendOTPView(APIView):
     permission_classes = [AllowAny]
     
+    @swagger_auto_schema(
+        operation_description="Send OTP to email",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='User email address')
+            }
+        ),
+        responses={
+            200: openapi.Response("OTP sent successfully", SendOTPSerializer),
+            400: "Bad Request"
+        }
+    )
     def post(self, request):
         """Send OTP to email"""
         serializer = SendOTPSerializer(data=request.data)
@@ -81,6 +99,21 @@ class SendOTPView(APIView):
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
     
+    @swagger_auto_schema(
+        operation_description="Verify OTP and return auth token",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email', 'otp'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='User email address'),
+                'otp': openapi.Schema(type=openapi.TYPE_STRING, description='6-digit OTP code')
+            }
+        ),
+        responses={
+            200: openapi.Response("Login successful", VerifyOTPSerializer),
+            400: "Bad Request"
+        }
+    )
     def post(self, request):
         """Verify OTP and return auth token"""
         serializer = VerifyOTPSerializer(data=request.data)
@@ -141,6 +174,22 @@ class VerifyOTPView(APIView):
 class SignupView(APIView):
     permission_classes = [AllowAny]
     
+    @swagger_auto_schema(
+        operation_description="Create a new user account",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['email', 'name', 'password'],
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description='User email address'),
+                'name': openapi.Schema(type=openapi.TYPE_STRING, description='User full name'),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD, description='User password')
+            }
+        ),
+        responses={
+            201: openapi.Response("Signup successful", SignupSerializer),
+            400: "Bad Request"
+        }
+    )
     def post(self, request):
         """Create a new user account"""
         serializer = SignupSerializer(data=request.data)
@@ -165,6 +214,18 @@ class SignupView(APIView):
 class GetProfileView(APIView):
     permission_classes = [IsAuthenticated]
     
+    @swagger_auto_schema(
+        operation_description="Get profile details for the authenticated user",
+        responses={
+            200: openapi.Response("Profile details retrieved successfully", UserProfileSerializer),
+            500: "Server error"
+        },
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER, description="Token <your-token>", type=openapi.TYPE_STRING, required=True
+            )
+        ]
+    )
     def get(self, request):
         """Get profile details for the authenticated user"""
         try:
@@ -183,7 +244,28 @@ class GetProfileView(APIView):
 
 class UploadDocumentView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
+    @swagger_auto_schema(
+        operation_description="Upload a document (Aadhar or PAN card)",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['document_type', 'file'],
+            properties={
+                'document_type': openapi.Schema(type=openapi.TYPE_STRING, enum=['aadhar', 'pan']),
+                'file': openapi.Schema(type=openapi.TYPE_FILE, description='Document file (PDF, JPG, PNG, JPEG)'),
+            },
+        ),
+        responses={
+            201: openapi.Response('Document uploaded', DocumentSerializer),
+            400: 'Validation error',
+            500: 'Server error',
+        },
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER, description="Token <your-token>", type=openapi.TYPE_STRING, required=True
+            )
+        ]
+    )
     def post(self, request):
         """Upload a document (Aadhar or PAN card)"""
         serializer = DocumentUploadSerializer(data=request.data)
@@ -234,6 +316,18 @@ class UploadDocumentView(APIView):
 class GetDocumentsView(APIView):
     permission_classes = [IsAuthenticated]
     
+    @swagger_auto_schema(
+        operation_description="Get all documents for the authenticated user",
+        responses={
+            200: openapi.Response("Documents retrieved successfully", DocumentSerializer(many=True)),
+            500: "Server error"
+        },
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER, description="Token <your-token>", type=openapi.TYPE_STRING, required=True
+            )
+        ]
+    )
     def get(self, request):
         """Get all documents for the authenticated user"""
         try:

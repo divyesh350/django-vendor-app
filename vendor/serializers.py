@@ -108,8 +108,8 @@ class DocumentUploadSerializer(serializers.Serializer):
 class DocumentSerializer(serializers.ModelSerializer):
     """Serializer for document retrieval"""
     document_type_display = serializers.CharField(source='get_document_type_display', read_only=True)
-    filename = serializers.CharField(source='filename', read_only=True)
-    file_size_mb = serializers.FloatField(source='file_size_mb', read_only=True)
+    filename = serializers.CharField(read_only=True)
+    file_size_mb = serializers.FloatField(read_only=True)
     file_url = serializers.SerializerMethodField()
     
     class Meta:
@@ -126,4 +126,4 @@ class DocumentSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.file.url)
-        return None 
+        return None
