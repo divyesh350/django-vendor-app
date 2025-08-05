@@ -246,6 +246,50 @@ response = requests.post(url, json=data)
 print(response.json())
 ```
 
+#### 4. Get Profile Details
+**GET** `/api/vendor/profile/`
+
+Retrieves profile details for the authenticated user. Requires authentication token.
+
+**Headers:**
+```
+Authorization: Token <your-auth-token>
+```
+
+**Response:**
+```json
+{
+  "message": "Profile details retrieved successfully",
+  "profile": {
+    "id": 1,
+    "username": "user@example.com",
+    "email": "user@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "date_joined": "2024-01-15T10:30:00Z",
+    "last_login": "2024-01-15T14:45:00Z"
+  }
+}
+```
+
+**cURL Example:**
+```bash
+curl -X GET http://localhost:8000/api/vendor/profile/ \
+  -H "Authorization: Token your-auth-token-here"
+```
+
+**Python Example:**
+```python
+import requests
+
+url = "http://localhost:8000/api/vendor/profile/"
+headers = {
+    "Authorization": "Token your-auth-token-here"
+}
+response = requests.get(url, headers=headers)
+print(response.json())
+```
+
 ### Error Responses
 
 **Validation Error (400):**
@@ -269,10 +313,31 @@ print(response.json())
 }
 ```
 
+**Authentication Required (401):**
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+**Invalid Token (401):**
+```json
+{
+  "detail": "Invalid token."
+}
+```
+
 **Server Error (500):**
 ```json
 {
   "error": "Failed to send OTP. Please try again."
+}
+```
+
+**Profile Retrieval Error (500):**
+```json
+{
+  "error": "Failed to retrieve profile details. Please try again."
 }
 ```
 
@@ -320,6 +385,11 @@ class EmailOTP(models.Model):
 4. **Test Signup:**
    - Send POST request to `/api/vendor/signup/`
    - Verify user creation
+
+5. **Test Get Profile:**
+   - Use the token from step 3
+   - Send GET request to `/api/vendor/profile/` with Authorization header
+   - Verify profile details are returned
 
 ### Automated Testing
 

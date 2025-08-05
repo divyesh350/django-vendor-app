@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
@@ -9,7 +9,7 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from rest_framework.authtoken.models import Token
 from .models import EmailOTP
-from .serializers import SendOTPSerializer, VerifyOTPSerializer, SignupSerializer
+from .serializers import SendOTPSerializer, VerifyOTPSerializer, SignupSerializer, UserProfileSerializer
 import logging
 
 logger = logging.getLogger(__name__)
@@ -157,3 +157,22 @@ class SignupView(APIView):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get profile details for the authenticated user"""
+        try:
+            serializer = UserProfileSerializer(request.user)
+            return Response({
+                'message': 'Profile details retrieved successfully',
+                'profile': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error retrieving profile for user {request.user.id}: {str(e)}")
+            return Response({
+                'error': 'Failed to retrieve profile details. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

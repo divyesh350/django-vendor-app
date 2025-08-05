@@ -63,4 +63,13 @@ class SignupSerializer(serializers.Serializer):
             password=validated_data['password'],
             first_name=validated_data['name']
         )
-        return user 
+        return user
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Serializer for user profile data"""
+    
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login']
+        read_only_fields = ['id', 'username', 'date_joined', 'last_login'] 
