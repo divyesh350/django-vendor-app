@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import EmailOTP
+from .models import EmailOTP, Document
+import os
 
 
 class SendOTPSerializer(serializers.Serializer):
@@ -72,4 +73,57 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'last_login']
-        read_only_fields = ['id', 'username', 'date_joined', 'last_login'] 
+        read_only_fields = ['id', 'username', 'date_joined', 'last_login']
+
+
+class DocumentUploadSerializer(serializers.Serializer):
+    """Serializer for document upload"""
+    document_type = serializers.ChoiceField(choices=Document.DOCUMENT_TYPES)
+    file = serializers.FileField()
+    
+    def validate_file(self, value):
+        """Validate uploaded file"""
+        # Check file size (max 10MB)
+        if value.size > 10 * 1024 * 1024:  # 10MB
+            raise serializers.ValidationError("File size must be less than 10MB")
+        
+        # Check file extension
+        allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png']
+        file_extension = os.path.splitext(value.name)[1].lower()
+        
+        if file_extension not in allowed_extensions:
+            raise serializers.ValidationError(
+                f"File type not supported. Allowed types: {', '.join(allowed_extensions)}"
+            )
+        
+        return value
+    
+    def validate_document_type(self, value):
+        """Validate document type"""
+        if value not in [choice[0] for choice in Document.DOCUMENT_TYPES]:
+            raise serializers.ValidationError("Invalid document type")
+        return value
+
+
+class DocumentSerializer(serializers.ModelSerializer):
+    """Serializer for document retrieval"""
+    document_type_display = serializers.CharField(source='get_document_type_display', read_only=True)
+    filename = serializers.CharField(source='filename', read_only=True)
+    file_size_mb = serializers.FloatField(source='file_size_mb', read_only=True)
+    file_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Document
+        fields = [
+            'id', 'document_type', 'document_type_display', 'filename', 
+            'file_size_mb', 'file_url', 'uploaded_at', 'is_verified'
+        ]
+        read_only_fields = ['id', 'uploaded_at', 'is_verified']
+    
+    def get_file_url(self, obj):
+        """Get the file URL for download"""
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+        return None 

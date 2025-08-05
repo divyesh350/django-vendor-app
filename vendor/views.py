@@ -8,8 +8,11 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from rest_framework.authtoken.models import Token
-from .models import EmailOTP
-from .serializers import SendOTPSerializer, VerifyOTPSerializer, SignupSerializer, UserProfileSerializer
+from .models import EmailOTP, Document
+from .serializers import (
+    SendOTPSerializer, VerifyOTPSerializer, SignupSerializer, 
+    UserProfileSerializer, DocumentUploadSerializer, DocumentSerializer
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -175,4 +178,108 @@ class GetProfileView(APIView):
             logger.error(f"Error retrieving profile for user {request.user.id}: {str(e)}")
             return Response({
                 'error': 'Failed to retrieve profile details. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UploadDocumentView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        """Upload a document (Aadhar or PAN card)"""
+        serializer = DocumentUploadSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            document_type = serializer.validated_data['document_type']
+            file = serializer.validated_data['file']
+            
+            try:
+                # Check if document already exists for this user and type
+                existing_doc = Document.objects.filter(
+                    user=request.user, 
+                    document_type=document_type
+                ).first()
+                
+                if existing_doc:
+                    # Update existing document
+                    existing_doc.file = file
+                    existing_doc.save()
+                    document = existing_doc
+                    message = f"{document.get_document_type_display()} updated successfully"
+                else:
+                    # Create new document
+                    document = Document.objects.create(
+                        user=request.user,
+                        document_type=document_type,
+                        file=file
+                    )
+                    message = f"{document.get_document_type_display()} uploaded successfully"
+                
+                # Serialize the response
+                doc_serializer = DocumentSerializer(document, context={'request': request})
+                
+                return Response({
+                    'message': message,
+                    'document': doc_serializer.data
+                }, status=status.HTTP_201_CREATED)
+                
+            except Exception as e:
+                logger.error(f"Error uploading document for user {request.user.id}: {str(e)}")
+                return Response({
+                    'error': 'Failed to upload document. Please try again.'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetDocumentsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get all documents for the authenticated user"""
+        try:
+            # Get documents for the user
+            documents = Document.objects.filter(user=request.user)
+            
+            # Filter by document type if provided
+            document_type = request.query_params.get('document_type')
+            if document_type:
+                documents = documents.filter(document_type=document_type)
+            
+            serializer = DocumentSerializer(documents, many=True, context={'request': request})
+            
+            return Response({
+                'message': 'Documents retrieved successfully',
+                'documents': serializer.data,
+                'count': len(serializer.data)
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error retrieving documents for user {request.user.id}: {str(e)}")
+            return Response({
+                'error': 'Failed to retrieve documents. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GetDocumentView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, document_id):
+        """Get a specific document by ID"""
+        try:
+            document = Document.objects.get(id=document_id, user=request.user)
+            serializer = DocumentSerializer(document, context={'request': request})
+            
+            return Response({
+                'message': 'Document retrieved successfully',
+                'document': serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Document.DoesNotExist:
+            return Response({
+                'error': 'Document not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error retrieving document {document_id} for user {request.user.id}: {str(e)}")
+            return Response({
+                'error': 'Failed to retrieve document. Please try again.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

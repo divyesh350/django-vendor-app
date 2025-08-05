@@ -24,8 +24,11 @@ A robust Django REST API backend with OTP-based authentication and user manageme
 - **🔑 Token Authentication**: Django REST Framework token-based auth
 - **⏰ OTP Expiry**: 5-minute expiration for security
 - **🛡️ Input Validation**: Comprehensive request validation
-- **📊 Admin Interface**: Django admin for OTP management
+- **📊 Admin Interface**: Django admin for OTP and document management
 - **🧪 Error Handling**: Robust error handling and responses
+- **📄 Document Management**: Upload and retrieve Aadhar and PAN cards
+- **📁 File Storage**: Secure file storage with size and type validation
+- **🔍 Document Filtering**: Filter documents by type (Aadhar/PAN)
 
 ## 🛠 Tech Stack
 
@@ -290,6 +293,185 @@ response = requests.get(url, headers=headers)
 print(response.json())
 ```
 
+#### 5. Upload Document
+**POST** `/api/vendor/upload-document/`
+
+Upload a document (Aadhar Card or PAN Card). Requires authentication token.
+
+**Headers:**
+```
+Authorization: Token <your-auth-token>
+Content-Type: multipart/form-data
+```
+
+**Request Body (multipart/form-data):**
+```
+document_type: aadhar (or pan)
+file: [PDF, JPG, JPEG, PNG file]
+```
+
+**Response:**
+```json
+{
+  "message": "Aadhar Card uploaded successfully",
+  "document": {
+    "id": 1,
+    "document_type": "aadhar",
+    "document_type_display": "Aadhar Card",
+    "filename": "aadhar_card.pdf",
+    "file_size_mb": 2.5,
+    "file_url": "http://localhost:8000/media/documents/aadhar_card.pdf",
+    "uploaded_at": "2024-01-15T10:30:00Z",
+    "is_verified": false
+  }
+}
+```
+
+**cURL Example:**
+```bash
+curl -X POST http://localhost:8000/api/vendor/upload-document/ \
+  -H "Authorization: Token your-auth-token-here" \
+  -F "document_type=aadhar" \
+  -F "file=@/path/to/aadhar_card.pdf"
+```
+
+**Python Example:**
+```python
+import requests
+
+url = "http://localhost:8000/api/vendor/upload-document/"
+headers = {
+    "Authorization": "Token your-auth-token-here"
+}
+files = {
+    'file': open('aadhar_card.pdf', 'rb')
+}
+data = {
+    'document_type': 'aadhar'
+}
+response = requests.post(url, headers=headers, files=files, data=data)
+print(response.json())
+```
+
+#### 6. Get All Documents
+**GET** `/api/vendor/documents/`
+
+Retrieve all documents for the authenticated user. Requires authentication token.
+
+**Headers:**
+```
+Authorization: Token <your-auth-token>
+```
+
+**Query Parameters (optional):**
+```
+document_type: aadhar (or pan)
+```
+
+**Response:**
+```json
+{
+  "message": "Documents retrieved successfully",
+  "documents": [
+    {
+      "id": 1,
+      "document_type": "aadhar",
+      "document_type_display": "Aadhar Card",
+      "filename": "aadhar_card.pdf",
+      "file_size_mb": 2.5,
+      "file_url": "http://localhost:8000/media/documents/aadhar_card.pdf",
+      "uploaded_at": "2024-01-15T10:30:00Z",
+      "is_verified": false
+    },
+    {
+      "id": 2,
+      "document_type": "pan",
+      "document_type_display": "PAN Card",
+      "filename": "pan_card.jpg",
+      "file_size_mb": 1.2,
+      "file_url": "http://localhost:8000/media/documents/pan_card.jpg",
+      "uploaded_at": "2024-01-15T11:00:00Z",
+      "is_verified": false
+    }
+  ],
+  "count": 2
+}
+```
+
+**cURL Example:**
+```bash
+# Get all documents
+curl -X GET http://localhost:8000/api/vendor/documents/ \
+  -H "Authorization: Token your-auth-token-here"
+
+# Get documents by type
+curl -X GET "http://localhost:8000/api/vendor/documents/?document_type=aadhar" \
+  -H "Authorization: Token your-auth-token-here"
+```
+
+**Python Example:**
+```python
+import requests
+
+# Get all documents
+url = "http://localhost:8000/api/vendor/documents/"
+headers = {
+    "Authorization": "Token your-auth-token-here"
+}
+response = requests.get(url, headers=headers)
+print(response.json())
+
+# Get documents by type
+params = {'document_type': 'aadhar'}
+response = requests.get(url, headers=headers, params=params)
+print(response.json())
+```
+
+#### 7. Get Specific Document
+**GET** `/api/vendor/documents/{document_id}/`
+
+Retrieve a specific document by ID. Requires authentication token.
+
+**Headers:**
+```
+Authorization: Token <your-auth-token>
+```
+
+**Response:**
+```json
+{
+  "message": "Document retrieved successfully",
+  "document": {
+    "id": 1,
+    "document_type": "aadhar",
+    "document_type_display": "Aadhar Card",
+    "filename": "aadhar_card.pdf",
+    "file_size_mb": 2.5,
+    "file_url": "http://localhost:8000/media/documents/aadhar_card.pdf",
+    "uploaded_at": "2024-01-15T10:30:00Z",
+    "is_verified": false
+  }
+}
+```
+
+**cURL Example:**
+```bash
+curl -X GET http://localhost:8000/api/vendor/documents/1/ \
+  -H "Authorization: Token your-auth-token-here"
+```
+
+**Python Example:**
+```python
+import requests
+
+url = "http://localhost:8000/api/vendor/documents/1/"
+headers = {
+    "Authorization": "Token your-auth-token-here"
+}
+response = requests.get(url, headers=headers)
+print(response.json())
+```
+
 ### Error Responses
 
 **Validation Error (400):**
@@ -341,6 +523,41 @@ print(response.json())
 }
 ```
 
+**Document Upload Error (400):**
+```json
+{
+  "file": ["File size must be less than 10MB"]
+}
+```
+
+**Invalid Document Type (400):**
+```json
+{
+  "document_type": ["Invalid document type"]
+}
+```
+
+**Document Not Found (404):**
+```json
+{
+  "error": "Document not found"
+}
+```
+
+**Document Upload Error (500):**
+```json
+{
+  "error": "Failed to upload document. Please try again."
+}
+```
+
+**Document Retrieval Error (500):**
+```json
+{
+  "error": "Failed to retrieve documents. Please try again."
+}
+```
+
 ## 🗄️ Database Models
 
 ### EmailOTP Model
@@ -363,6 +580,38 @@ class EmailOTP(models.Model):
 - `is_expired()`: Checks if OTP is expired (5 minutes)
 - `generate_otp()`: Generates a random 6-digit OTP
 - `create_otp(email)`: Creates a new OTP for the given email
+
+### Document Model
+
+```python
+class Document(models.Model):
+    DOCUMENT_TYPES = [
+        ('aadhar', 'Aadhar Card'),
+        ('pan', 'PAN Card'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='documents')
+    document_type = models.CharField(max_length=10, choices=DOCUMENT_TYPES)
+    file = models.FileField(upload_to='documents/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    is_verified = models.BooleanField(default=False)
+```
+
+**Fields:**
+- `user`: Foreign key to User model
+- `document_type`: Type of document (Aadhar or PAN)
+- `file`: Uploaded file field
+- `uploaded_at`: Timestamp when document was uploaded
+- `is_verified`: Boolean flag for document verification status
+
+**Methods:**
+- `filename()`: Returns the filename from the file path
+- `file_size()`: Returns file size in bytes
+- `file_size_mb()`: Returns file size in MB
+
+**Constraints:**
+- One document per type per user (unique_together)
+- Files stored in `documents/` directory
 
 ## 🧪 Testing
 
@@ -390,6 +639,20 @@ class EmailOTP(models.Model):
    - Use the token from step 3
    - Send GET request to `/api/vendor/profile/` with Authorization header
    - Verify profile details are returned
+
+6. **Test Upload Document:**
+   - Use the token from step 3
+   - Send POST request to `/api/vendor/upload-document/` with file and document_type
+   - Verify document is uploaded successfully
+
+7. **Test Get Documents:**
+   - Send GET request to `/api/vendor/documents/` with Authorization header
+   - Verify all documents are returned
+
+8. **Test Get Specific Document:**
+   - Use document ID from step 6
+   - Send GET request to `/api/vendor/documents/{id}/` with Authorization header
+   - Verify specific document details are returned
 
 ### Automated Testing
 
