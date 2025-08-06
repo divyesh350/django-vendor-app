@@ -2,16 +2,18 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework import status
+from decimal import Decimal
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from rest_framework.authtoken.models import Token
-from .models import EmailOTP, Document
+from .models import EmailOTP, Document, Wallet
 from .serializers import (
     SendOTPSerializer, VerifyOTPSerializer, SignupSerializer, 
-    UserProfileSerializer, DocumentUploadSerializer, DocumentSerializer
+    UserProfileSerializer, DocumentUploadSerializer, DocumentSerializer, WalletSerializer
 )
 import logging
 
@@ -92,6 +94,59 @@ class SendOTPView(APIView):
                     'error': 'Failed to send OTP. Please check your email configuration.',
                     'details': str(e) if settings.DEBUG else None
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+from .utils import generate_quotation_pdf
+from django.http import HttpResponse
+
+
+class GenerateQuotationPDFView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Generate a sample PDF quotation",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['cx_name', 'date', 'processes', 'products', 'total_area', 'total_amount'],
+            properties={
+                'cx_name': openapi.Schema(type=openapi.TYPE_STRING, description='Customer Name'),
+                'date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description='Quotation Date (YYYY-MM-DD)'),
+                'processes': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_STRING), description='List of processes'),
+                'products': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Items(type=openapi.TYPE_STRING), description='List of products'),
+                'total_area': openapi.Schema(type=openapi.TYPE_STRING, description='Total Area'),
+                'total_amount': openapi.Schema(type=openapi.TYPE_NUMBER, format=openapi.FORMAT_FLOAT, description='Total Amount')
+            }
+        ),
+        responses={
+            200: openapi.Response("PDF generated successfully", content={'application/pdf': {'schema': {'type': 'string', 'format': 'binary'}}}),
+            400: "Bad Request",
+            500: "Server error"
+        },
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER, description="Token <your-token>", type=openapi.TYPE_STRING, required=True
+            )
+        ]
+    )
+    def post(self, request):
+        cx_name = request.data.get('cx_name')
+        date = request.data.get('date')
+        processes = request.data.get('processes')
+        products = request.data.get('products')
+        total_area = request.data.get('total_area')
+        total_amount = request.data.get('total_amount')
+
+        if not all([cx_name, date, processes, products, total_area, total_amount]):
+            return Response({'error': 'All fields are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            pdf_buffer = generate_quotation_pdf(cx_name, date, processes, products, total_area, total_amount)
+            response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="quotation.pdf"'
+            return response
+        except Exception as e:
+            logger.error(f"Error generating PDF: {str(e)}")
+            return Response({'error': f'Failed to generate PDF: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -242,29 +297,30 @@ class GetProfileView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+from rest_framework.parsers import MultiPartParser, FileUploadParser
+
 class UploadDocumentView(APIView):
+    parser_classes = (MultiPartParser, FileUploadParser,)
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         operation_description="Upload a document (Aadhar or PAN card)",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['document_type', 'file'],
-            properties={
-                'document_type': openapi.Schema(type=openapi.TYPE_STRING, enum=['aadhar', 'pan']),
-                'file': openapi.Schema(type=openapi.TYPE_FILE, description='Document file (PDF, JPG, PNG, JPEG)'),
-            },
-        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'document_type', openapi.IN_FORM, type=openapi.TYPE_STRING, enum=['aadhar', 'pan'], required=True, description='Document type (aadhar or pan)'
+            ),
+            openapi.Parameter(
+                'file', openapi.IN_FORM, type=openapi.TYPE_FILE, required=True, description='Document file (PDF, JPG, PNG, JPEG)'
+            ),
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER, description="Token <your-token>", type=openapi.TYPE_STRING, required=True
+            )
+        ],
         responses={
             201: openapi.Response('Document uploaded', DocumentSerializer),
             400: 'Validation error',
             500: 'Server error',
-        },
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization', openapi.IN_HEADER, description="Token <your-token>", type=openapi.TYPE_STRING, required=True
-            )
-        ]
+        }
     )
     def post(self, request):
         """Upload a document (Aadhar or PAN card)"""
@@ -376,4 +432,52 @@ class GetDocumentView(APIView):
             logger.error(f"Error retrieving document {document_id} for user {request.user.id}: {str(e)}")
             return Response({
                 'error': 'Failed to retrieve document. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class WalletView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Add funds to user's wallet",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['amount'],
+            properties={
+                'amount': openapi.Schema(type=openapi.TYPE_NUMBER, format=openapi.FORMAT_FLOAT, description='Amount to add to wallet')
+            }
+        ),
+        responses={
+            200: openapi.Response("Funds added successfully", WalletSerializer),
+            400: "Bad Request",
+            500: "Server error"
+        },
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER, description="Token <your-token>", type=openapi.TYPE_STRING, required=True
+            )
+        ]
+    )
+    def post(self, request):
+        """Add funds to user's wallet"""
+        amount = request.data.get('amount')
+
+        if not isinstance(amount, (int, float)) or amount <= 0:
+            return Response({'error': 'Invalid amount. Must be a positive number.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            wallet, created = Wallet.objects.get_or_create(user=request.user)
+            wallet.balance += Decimal(str(amount))
+            wallet.save()
+
+            serializer = WalletSerializer(wallet)
+            return Response({
+                'message': 'Funds added successfully',
+                'wallet': serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Error adding funds to wallet for user {request.user.id}: {str(e)}")
+            return Response({
+                'error': 'Failed to add funds to wallet. Please try again.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

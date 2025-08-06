@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import EmailOTP, Document
+from .models import EmailOTP, Document, Wallet
 import os
 
 
@@ -127,3 +127,12 @@ class DocumentSerializer(serializers.ModelSerializer):
             if request:
                 return request.build_absolute_uri(obj.file.url)
         return None
+
+
+class WalletSerializer(serializers.ModelSerializer):
+    """Serializer for Wallet model"""
+
+    class Meta:
+        model = Wallet
+        fields = ['id', 'user', 'balance']
+        read_only_fields = ['id', 'user']

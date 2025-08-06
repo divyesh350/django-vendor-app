@@ -72,3 +72,11 @@ class Document(models.Model):
     def file_size_mb(self):
         """Get file size in MB"""
         return round(self.file_size() / (1024 * 1024), 2)
+
+
+class Wallet(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    def __str__(self):
+        return f"Wallet for {self.user.email}: {self.balance}"

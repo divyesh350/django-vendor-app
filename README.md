@@ -439,6 +439,126 @@ print(response.json())
 #### 7. Get Specific Document
 **GET** `/api/vendor/documents/{document_id}/`
 
+#### 8. Wallet Management
+**POST** `/api/vendor/wallet/`
+
+Adds funds to the authenticated user's wallet. Requires authentication token.
+
+**Headers:**
+```
+Authorization: Token <your-auth-token>
+```
+
+**Request Body:**
+```json
+{
+  "amount": 100.00
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Wallet updated successfully",
+  "balance": 100.00
+}
+```
+
+**cURL Example:**
+```bash
+curl -X POST http://localhost:8000/api/vendor/wallet/ \
+  -H "Authorization: Token your-auth-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 100.00}'
+```
+
+**Python Example:**
+```python
+import requests
+
+url = "http://localhost:8000/api/vendor/wallet/"
+headers = {
+    "Authorization": "Token your-auth-token-here",
+    "Content-Type": "application/json"
+}
+data = {
+    "amount": 100.00
+}
+response = requests.post(url, headers=headers, json=data)
+print(response.json())
+```
+
+#### 9. Generate Quotation PDF
+**POST** `/api/vendor/generate-quotation-pdf/`
+
+Generates a sample PDF quotation. Requires authentication token.
+
+**Headers:**
+```
+Authorization: Token <your-auth-token>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "cx_name": "John Doe",
+  "date": "2024-08-06",
+  "processes": ["Design", "Printing"],
+  "products": ["Brochures", "Business Cards"],
+  "total_area": "100 sq ft",
+  "total_amount": 500.00
+}
+```
+
+**Response:**
+```
+(PDF File)
+```
+
+**cURL Example:**
+```bash
+curl -X POST http://localhost:8000/api/vendor/generate-quotation-pdf/ \
+  -H "Authorization: Token your-auth-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cx_name": "John Doe",
+    "date": "2024-08-06",
+    "processes": ["Design", "Printing"],
+    "products": ["Brochures", "Business Cards"],
+    "total_area": "100 sq ft",
+    "total_amount": 500.00
+  }' \
+  --output quotation.pdf
+```
+
+**Python Example:**
+```python
+import requests
+
+url = "http://localhost:8000/api/vendor/generate-quotation-pdf/"
+headers = {
+    "Authorization": "Token your-auth-token-here",
+    "Content-Type": "application/json"
+}
+data = {
+  "cx_name": "John Doe",
+  "date": "2024-08-06",
+  "processes": ["Design", "Printing"],
+  "products": ["Brochures", "Business Cards"],
+  "total_area": "100 sq ft",
+  "total_amount": 500.00
+}
+response = requests.post(url, headers=headers, json=data)
+
+if response.status_code == 200:
+    with open("quotation.pdf", "wb") as f:
+        f.write(response.content)
+    print("PDF generated successfully: quotation.pdf")
+else:
+    print(f"Error: {response.status_code} - {response.text}")
+```
+
 Retrieve a specific document by ID. Requires authentication token.
 
 **Headers:**
@@ -810,4 +930,4 @@ If you encounter any issues or have questions:
 
 ---
 
-**Made with ❤️ using Django REST Framework** 
+**Made with ❤️ using Django REST Framework**
