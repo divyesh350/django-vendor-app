@@ -1,5 +1,7 @@
 from django.contrib import admin
+from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import TemplateView
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -24,6 +26,13 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path('frontend/login/', TemplateView.as_view(template_name='frontend/login.html'), name='login'),
+    path('frontend/signup/', TemplateView.as_view(template_name='frontend/signup.html'), name='signup'),
+    path('frontend/dashboard/', TemplateView.as_view(template_name='frontend/dashboard.html'), name='dashboard'),
+    path('frontend/documents/', TemplateView.as_view(template_name='frontend/documents.html'), name='documents'),
+    path('frontend/wallet/', TemplateView.as_view(template_name='frontend/wallet.html'), name='wallet'),
+    path('frontend/quotation/', TemplateView.as_view(template_name='frontend/quotation.html'), name='quotation'),
+
     path('admin/', admin.site.urls),
     path('api/vendor/', include('vendor.urls')),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
@@ -33,3 +42,4 @@ urlpatterns = [
 # Serve media files during development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

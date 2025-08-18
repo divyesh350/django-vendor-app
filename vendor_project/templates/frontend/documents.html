@@ -1,0 +1,99 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Documents{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Upload Document</div>
+            <div class="card-body">
+                <form id="upload-document-form">
+                    <div class="mb-3">
+                        <label for="document-type" class="form-label">Document Type</label>
+                        <select class="form-select" id="document-type" required>
+                            <option value="">Select Type</option>
+                            <option value="aadhar">Aadhar Card</option>
+                            <option value="pan">PAN Card</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="document-file" class="form-label">File</label>
+                        <input type="file" class="form-control" id="document-file" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Your Documents</div>
+            <div class="card-body">
+                <ul class="list-group" id="document-list">
+                    <!-- Documents will be loaded here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const uploadForm = document.getElementById('upload-document-form');
+        const documentList = document.getElementById('document-list');
+
+        const fetchDocuments = async () => {
+            try {
+                const response = await api.get('/api/vendor/documents/');
+                documentList.innerHTML = ''; // Clear existing list
+                if (response.documents.length === 0) {
+                    documentList.innerHTML = '<li class="list-group-item">No documents uploaded yet.</li>';
+                    return;
+                }
+                response.documents.forEach(doc => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    listItem.innerHTML = `
+                        ${doc.document_type_display}: ${doc.filename} (${doc.file_size_mb} MB)
+                        <a href="${doc.file_url}" target="_blank" class="btn btn-sm btn-info">View</a>
+                    `;
+                    documentList.appendChild(listItem);
+                });
+            } catch (error) {
+                console.error('Error fetching documents:', error);
+                alert('Failed to load documents. ' + error.message);
+            }
+        };
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const documentType = document.getElementById('document-type').value;
+            const documentFile = document.getElementById('document-file').files[0];
+
+            if (!documentType || !documentFile) {
+                alert('Please select a document type and a file.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('document_type', documentType);
+            formData.append('file', documentFile);
+
+            try {
+                const response = await api.post('/api/vendor/upload-document/', formData, true);
+                alert(response.message);
+                uploadForm.reset();
+                fetchDocuments(); // Refresh the list
+            } catch (error) {
+                alert('Error uploading document: ' + error.message);
+            }
+        });
+
+        fetchDocuments(); // Initial load
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Generate Quotation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Generate Quotation PDF</div>
+            <div class="card-body">
+                <form id="quotation-form">
+                    <div class="mb-3">
+                        <label for="cx_name" class="form-label">Customer Name</label>
+                        <input type="text" class="form-control" id="cx_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="processes" class="form-label">Processes (comma separated)</label>
+                        <input type="text" class="form-control" id="processes" placeholder="e.g., Design, Printing">
+                    </div>
+                    <div class="mb-3">
+                        <label for="products" class="form-label">Products (comma separated)</label>
+                        <input type="text" class="form-control" id="products" placeholder="e.g., Brochures, Business Cards">
+                    </div>
+                    <div class="mb-3">
+                        <label for="total_area" class="form-label">Total Area</label>
+                        <input type="text" class="form-control" id="total_area" placeholder="e.g., 100 sq ft" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="total_amount" class="form-label">Total Amount</label>
+                        <input type="number" step="0.01" class="form-control" id="total_amount" required min="0">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate PDF</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const quotationForm = document.getElementById('quotation-form');
+
+        quotationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const cx_name = document.getElementById('cx_name').value;
+            const date = document.getElementById('date').value;
+            const processes = document.getElementById('processes').value.split(',').map(item => item.trim()).filter(item => item !== '');
+            const products = document.getElementById('products').value.split(',').map(item => item.trim()).filter(item => item !== '');
+            const total_area = document.getElementById('total_area').value;
+            const total_amount = parseFloat(document.getElementById('total_amount').value);
+
+            try {
+                const response = await fetch('/api/vendor/generate-quotation-pdf/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Token ${api.getToken()}`
+                    },
+                    body: JSON.stringify({
+                        cx_name, date, processes, products, total_area, total_amount
+                    })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'quotation.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    alert('Quotation PDF generated successfully!');
+                } else {
+                    const errorData = await response.json();
+                    alert('Error generating PDF: ' + (errorData.message || JSON.stringify(errorData)));
+                }
+            } catch (error) {
+                console.error('Error generating PDF:', error);
+                alert('Error generating PDF: ' + error.message);
+            }
+        });
+    });
+</script>
+{% endblock %}

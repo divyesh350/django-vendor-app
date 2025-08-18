@@ -1,0 +1,37 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">User Profile</div>
+            <div class="card-body">
+                <p><strong>Email:</strong> <span id="profile-email"></span></p>
+                <p><strong>Name:</strong> <span id="profile-name"></span></p>
+                <p><strong>Date Joined:</strong> <span id="profile-date-joined"></span></p>
+                <p><strong>Last Login:</strong> <span id="profile-last-login"></span></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const response = await api.get('/api/vendor/profile/');
+            document.getElementById('profile-email').textContent = response.profile.email;
+            document.getElementById('profile-name').textContent = response.profile.first_name + ' ' + response.profile.last_name;
+            document.getElementById('profile-date-joined').textContent = new Date(response.profile.date_joined).toLocaleString();
+            document.getElementById('profile-last-login').textContent = new Date(response.profile.last_login).toLocaleString();
+        } catch (error) {
+            console.error('Error fetching profile:', error);
+            alert('Failed to load profile data. Please log in again.');
+            window.location.href = '/frontend/login/';
+        }
+    });
+</script>
+{% endblock %}

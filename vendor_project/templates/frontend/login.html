@@ -1,0 +1,70 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Login</div>
+            <div class="card-body">
+                <form id="login-form">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email address</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3" id="otp-field" style="display: none;">
+                        <label for="otp" class="form-label">OTP</label>
+                        <input type="text" class="form-control" id="otp">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="submit-button">Send OTP</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const emailInput = document.getElementById('email');
+        const otpField = document.getElementById('otp-field');
+        const otpInput = document.getElementById('otp');
+        const submitButton = document.getElementById('submit-button');
+        const loginForm = document.getElementById('login-form');
+
+        let otpSent = false;
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = emailInput.value;
+
+            if (!otpSent) {
+                // Send OTP
+                try {
+                    const response = await api.post('/api/vendor/send-otp/', { email });
+                    alert(response.message);
+                    otpSent = true;
+                    otpField.style.display = 'block';
+                    submitButton.textContent = 'Verify OTP';
+                } catch (error) {
+                    alert('Error sending OTP: ' + error.message);
+                }
+            } else {
+                // Verify OTP
+                const otp = otpInput.value;
+                try {
+                    const response = await api.post('/api/vendor/verify-otp/', { email, otp });
+                    alert(response.message);
+                    localStorage.setItem('token', response.token);
+                    window.location.href = '/frontend/dashboard/';
+                } catch (error) {
+                    alert('Error verifying OTP: ' + error.message);
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

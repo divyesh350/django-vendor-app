@@ -1,0 +1,75 @@
+{% extends 'frontend/base.html' %}
+
+{% block title %}Wallet{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Wallet Balance</div>
+            <div class="card-body">
+                <h3 class="card-title">Current Balance: ₹ <span id="wallet-balance">0.00</span></h3>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Add Funds</div>
+            <div class="card-body">
+                <form id="add-funds-form">
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Amount</label>
+                        <input type="number" step="0.01" class="form-control" id="amount" required min="0.01">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Funds</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const walletBalanceSpan = document.getElementById('wallet-balance');
+        const addFundsForm = document.getElementById('add-funds-form');
+
+        const fetchWalletBalance = async () => {
+            try {
+                // Assuming there's a GET endpoint for wallet balance, or it's part of profile
+                // For now, we'll just display what the POST returns or default to 0
+                // If there's no GET endpoint, you'd typically fetch it with profile or on login
+                // For this example, we'll just show 0 and update after adding funds.
+                // In a real app, you'd have a /api/vendor/wallet/ GET endpoint.
+                walletBalanceSpan.textContent = parseFloat(localStorage.getItem('wallet_balance') || '0').toFixed(2);
+            } catch (error) {
+                console.error('Error fetching wallet balance:', error);
+                alert('Failed to load wallet balance. ' + error.message);
+            }
+        };
+
+        addFundsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const amount = parseFloat(document.getElementById('amount').value);
+
+            if (isNaN(amount) || amount <= 0) {
+                alert('Please enter a valid amount.');
+                return;
+            }
+
+            try {
+                const response = await api.post('/api/vendor/wallet/', { amount });
+                alert(response.message);
+                localStorage.setItem('wallet_balance', response.wallet.balance);
+                walletBalanceSpan.textContent = parseFloat(response.wallet.balance).toFixed(2);
+                addFundsForm.reset();
+            } catch (error) {
+                alert('Error adding funds: ' + error.message);
+            }
+        });
+
+        fetchWalletBalance(); // Initial load
+    });
+</script>
+{% endblock %}

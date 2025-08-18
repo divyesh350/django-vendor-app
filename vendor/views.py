@@ -398,7 +398,7 @@ class GetDocumentsView(APIView):
             serializer = DocumentSerializer(documents, many=True, context={'request': request})
             
             return Response({
-                'message': 'Documents retrieved successfully',
+                'message': 'Documents retrieved successfully    ',
                 'documents': serializer.data,
                 'count': len(serializer.data)
             }, status=status.HTTP_200_OK)
@@ -481,3 +481,34 @@ class WalletView(APIView):
             return Response({
                 'error': 'Failed to add funds to wallet. Please try again.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class WalletBalanceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Retrieve user's wallet balance",
+        responses={
+            200: openapi.Response("Wallet balance retrieved successfully", WalletSerializer),
+            401: "Unauthorized",
+            404: "Not Found"
+        },
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization', openapi.IN_HEADER, description="Token <your-token>", type=openapi.TYPE_STRING, required=True
+            )
+        ]
+    )
+    def get(self, request):
+        user = request.user
+        try:
+            wallet = Wallet.objects.get(user=user)
+            serializer = WalletSerializer(wallet)
+            return Response({
+                'message': 'Wallet balance retrieved successfully',
+                'balance': serializer.data['balance']
+            }, status=status.HTTP_200_OK)
+        except Wallet.DoesNotExist:
+            return Response({
+                'error': 'Wallet not found for this user'
+            }, status=status.HTTP_404_NOT_FOUND)
